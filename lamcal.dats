@@ -220,7 +220,7 @@ term = term_vtype
 fun{}
 free_term(t0: term): void =
   case+ t0 of
-  | ~Var(rcs) => decref(rcs)
+  | ~Var(rcs) => decref<strptr>(rcs)
   | ~Lam(rcs, f) => (free_term(fs); free_end(f))
       where val fs = f(Var(rcs)) end
   | ~App(t1, t2) => (free_term(t1); free_term(t2))
@@ -269,7 +269,7 @@ fun{}
 reduce(t0: term): term =
   case+ t0 of
   | ~App(~Lam(rcs, f), t) => let
-        val ft = f(t) in (decref(rcs); free_end(f); reduce(ft))
+        val ft = f(t) in (decref<strptr>(rcs); free_end(f); reduce(ft))
       end
   | _ => t0
 
@@ -308,7 +308,7 @@ bind = @{nam = rcstr, trm = term}
 
 fun{}
 free_bind(bnd: bind): void =
-  (decref(bnd.nam); free_term(bnd.trm))
+  (decref<strptr>(bnd.nam); free_term(bnd.trm))
 
 (* ***** ***** *)
 
@@ -380,7 +380,7 @@ local
     (pfctx: ctxstruct @ l | p: ptr(l)):
     [l1: agz](ctxarr_v(l1), ctxarr_v(l1) -<lin> ctxstruct @ l | ptr(l1)) =
     let val addr_arr = addr@(p->arr) in $UN.castvwtp0((pfctx | addr_arr)) end
- 
+
   fun{}
   get_arr_ptr_uninit{l: agz}
     (pfctx: ctxstruct? @ l | p: ptr(l)):
@@ -399,14 +399,14 @@ local
   term_of_bindopt(bndopt: Option_vt(bind)): term =
     case bndopt of
     | ~None_vt() => $raise UnboundNameExn()
-    | ~Some_vt(bnd) => (decref(bnd.nam); bnd.trm)
+    | ~Some_vt(bnd) => (decref<strptr>(bnd.nam); bnd.trm)
 
 in
   implement
   array_initize$init<bind>(i, b) = let
       val noname = s2rc(string0_copy(""))
     in
-      (b.nam := incref(noname); b.trm := Var(noname))
+      (b.nam := incref<strptr>(noname); b.trm := Var(noname))
     end
 
   implement
@@ -428,7 +428,7 @@ in
 
   implement
   add_to_ctx<>(ctx, bnd) = let
-      val (pf, fpf | p) = vtakeout(ctx)
+      val (pf, fpf | p) = vtakeout<ctxstruct>(ctx)
       val (pfcur, fpfcur | pcur) = get_cur_ptr(pf | p)
       val i: ctxidx = !pcur
       prval pf = fpfcur(pfcur)
@@ -467,7 +467,7 @@ in
                )
            end
 
-       val (pf, fpf | p) = vtakeout(ctx)
+       val (pf, fpf | p) = vtakeout<ctxstruct>(ctx)
        val (pfcur, fpfcur | pcur) = get_cur_ptr(pf | p)
        val i: uint = !pcur
        prval pf = fpfcur(pfcur)
@@ -564,7 +564,7 @@ end
 //  Input type.
 
 abstype
-input 
+input
 
 //  "Popping"; reading one char and advancing the current position in
 //  the source code (input).
@@ -642,7 +642,7 @@ parse_lam(inp: input, ctx: context): term =
     val name = s2rc(parse_name(inp))
     val ((*check*)) = parse_char('.', inp)
     // Duplicate and dodge scope restriction.
-    val name1 = incref(name)
+    val name1 = incref<strptr>(name)
     val name = $UN.castvwtp0{ptr}(name)
     val name1 = $UN.castvwtp0{ptr}(name1)
   in
@@ -660,7 +660,7 @@ parse_lam(inp: input, ctx: context): term =
 fun{}
 parse_app(inp: input, ctx: context): term =
   let
-    val func = parse_term(inp, incref(ctx))
+    val func = parse_term(inp, incref<ctxstruct>(ctx))
     val argm = parse_term(inp, ctx)
     val ((*check*)) = parse_char(')', inp)
   in
@@ -681,7 +681,7 @@ parse_term<>(inp, ctx) =
           val () = input_ungetc(chr, inp)
           val result = find_in_ctx(parse_name(inp), ctx)
         in
-          (decref(ctx); result)
+          (decref<ctxstruct>(ctx); result)
         end
   end
 
@@ -707,5 +707,5 @@ main() = 0 where
   val prs = parse(inp)
   val wow = normalize(prs)
   val () = (fprint_term(stdout_ref, wow); print_newline())
-  val () = fileref_close(fref) 
-end 
+  val () = fileref_close(fref)
+end
